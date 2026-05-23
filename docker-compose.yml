@@ -1,31 +1,14 @@
 services:
-  lavalink:
-    image: ghcr.io/lavalink-devs/lavalink:4
-    restart: unless-stopped
-    networks:
-      - music
-
   muse:
     build: .
     restart: unless-stopped
-    depends_on:
-      - lavalink
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
-      - LAVALINK_HOST=lavalink
-      - LAVALINK_PORT=2333
-      - LAVALINK_PASSWORD=youshallnotpass
     volumes:
       - muse-data:/data
-    networks:
-      - music
-
-networks:
-  music:
-    driver: bridge
 
 volumes:
   muse-data:
