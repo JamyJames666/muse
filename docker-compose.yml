@@ -9,8 +9,6 @@ services:
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - WEB_PASSWORD=${WEB_PASSWORD}
       - WEB_PORT=4000
-    ports:
-      - "4000:4000"
     volumes:
       - muse-data:/data
 
