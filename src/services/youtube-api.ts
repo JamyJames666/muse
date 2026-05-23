@@ -1,6 +1,7 @@
 import {inject, injectable} from 'inversify';
 import {toSeconds, parse} from 'iso8601-duration';
 import got, {Got} from 'got';
+import {execa} from 'execa';
 import {SongMetadata, QueuedPlaylist, MediaSource} from './player.js';
 import {TYPES} from '../types.js';
 import Config from './config.js';
@@ -8,6 +9,19 @@ import KeyValueCacheProvider from './key-value-cache.js';
 import {ONE_HOUR_IN_SECONDS, ONE_MINUTE_IN_SECONDS} from '../utils/constants.js';
 import {parseTime} from '../utils/time.js';
 import getYouTubeID from 'get-youtube-id';
+import {getExecutable} from '../utils/yt-dlp.js';
+
+interface YtDlpVideoInfo {
+  id: string;
+  title: string;
+  uploader?: string;
+  channel?: string;
+  duration?: number;
+  thumbnail?: string;
+  is_live?: boolean;
+  description?: string;
+  chapters?: Array<{title: string; start_time: number; end_time: number}>;
+}
 
 interface VideoDetailsResponse {
   id: string;
@@ -80,6 +94,10 @@ export default class {
   }
 
   async search(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+    if (!this.youtubeKey) {
+      return this.searchWithYtDlp(query, shouldSplitChapters);
+    }
+
     const params = {
       searchParams: {
         part: 'snippet',
@@ -116,6 +134,10 @@ export default class {
   }
 
   async getVideo(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+    if (!this.youtubeKey) {
+      return this.getVideoWithYtDlp(url, shouldSplitChapters);
+    }
+
     const videoId = url.length === 11 ? url : getYouTubeID(url);
 
     if (!videoId) {
@@ -130,6 +152,67 @@ export default class {
     }
 
     return this.getMetadataFromVideo({video, shouldSplitChapters});
+  }
+
+  private async searchWithYtDlp(query: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+    const {stdout} = await execa(getExecutable(), [
+      '--dump-single-json',
+      '--no-playlist',
+      '--skip-download',
+      '--no-warnings',
+      '--no-cache-dir',
+      `ytsearch1:${query}`,
+    ], {timeout: 30_000});
+
+    const result = JSON.parse(stdout) as YtDlpVideoInfo;
+    if (!result.id) {
+      return [];
+    }
+
+    return this.ytDlpInfoToMetadata(result, shouldSplitChapters);
+  }
+
+  private async getVideoWithYtDlp(url: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
+    const {stdout} = await execa(getExecutable(), [
+      '--dump-single-json',
+      '--no-playlist',
+      '--skip-download',
+      '--no-warnings',
+      '--no-cache-dir',
+      url,
+    ], {timeout: 30_000});
+
+    const result = JSON.parse(stdout) as YtDlpVideoInfo;
+    if (!result.id) {
+      throw new Error('Video could not be found.');
+    }
+
+    return this.ytDlpInfoToMetadata(result, shouldSplitChapters);
+  }
+
+  private ytDlpInfoToMetadata(info: YtDlpVideoInfo, shouldSplitChapters: boolean): SongMetadata[] {
+    const base: SongMetadata = {
+      source: MediaSource.Youtube,
+      title: info.title,
+      artist: info.uploader ?? info.channel ?? '',
+      length: info.duration ?? 0,
+      offset: 0,
+      url: info.id,
+      playlist: null,
+      isLive: info.is_live ?? false,
+      thumbnailUrl: info.thumbnail ?? null,
+    };
+
+    if (!shouldSplitChapters || !info.chapters?.length) {
+      return [base];
+    }
+
+    return info.chapters.map(chapter => ({
+      ...base,
+      offset: chapter.start_time,
+      length: chapter.end_time - chapter.start_time,
+      title: `${chapter.title} (${base.title})`,
+    }));
   }
 
   async getPlaylist(listId: string, shouldSplitChapters: boolean): Promise<SongMetadata[]> {
