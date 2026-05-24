@@ -3,563 +3,873 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Muse Dashboard</title>
+<title>Muse</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0f0f13;
-    color: #e0e0e0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c26;
+  --border: #ffffff12;
+  --accent: #7c3aed;
+  --accent-dim: #5b21b6;
+  --text: #e8e8f0;
+  --muted: #6b6b80;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --radius: 12px;
+}
 
-  /* Login */
-  #login-screen {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-  }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  .login-box {
-    background: #1a1a24;
-    border: 1px solid #2a2a3a;
-    border-radius: 16px;
-    padding: 40px;
-    width: 340px;
-    text-align: center;
-  }
+/* ─── Login ─── */
+#login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 0%, #2d1b6920 0%, transparent 70%);
+}
 
-  .login-box h1 { font-size: 28px; margin-bottom: 8px; color: #fff; }
-  .login-box p { color: #888; margin-bottom: 28px; font-size: 14px; }
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: min(380px, 92vw);
+  text-align: center;
+}
 
-  input[type="password"], input[type="text"], select {
-    width: 100%;
-    padding: 12px 16px;
-    background: #0f0f13;
-    border: 1px solid #2a2a3a;
-    border-radius: 8px;
-    color: #e0e0e0;
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+.login-logo { font-size: 44px; margin-bottom: 12px; }
+.login-card h1 { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.login-card p { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
 
-  input:focus, select:focus { border-color: #7c3aed; }
+.field { margin-bottom: 12px; }
+.field input {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .15s;
+}
+.field input:focus { border-color: var(--accent); }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 500;
-    transition: opacity 0.15s, transform 0.1s;
-  }
+.btn-login {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  margin-top: 4px;
+}
+.btn-login:hover { background: var(--accent-dim); }
+.btn-login:active { transform: scale(.98); }
+.login-error { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
 
-  .btn:active { transform: scale(0.97); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* ─── App ─── */
+#app { display: none; flex-direction: column; min-height: 100vh; }
 
-  .btn-primary { background: #7c3aed; color: #fff; width: 100%; margin-top: 12px; }
-  .btn-primary:hover { background: #6d28d9; }
-  .btn-icon { background: #2a2a3a; color: #e0e0e0; padding: 12px; border-radius: 50%; width: 48px; height: 48px; }
-  .btn-icon:hover { background: #3a3a4a; }
-  .btn-icon.active { background: #7c3aed; }
-  .btn-play { background: #7c3aed; color: #fff; padding: 14px; border-radius: 50%; width: 56px; height: 56px; }
-  .btn-play:hover { background: #6d28d9; }
-  .btn-danger { background: #7f1d1d; color: #fca5a5; }
-  .btn-danger:hover { background: #991b1b; }
-  .btn-sm { padding: 6px 12px; font-size: 13px; }
+/* Header */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
 
-  .error-msg { color: #f87171; font-size: 13px; margin-top: 8px; min-height: 18px; }
+.header-logo { font-weight: 700; font-size: 18px; color: #fff; display: flex; align-items: center; gap: 8px; }
+.header-logo span { color: var(--accent); }
 
-  /* App layout */
-  #app { display: none; flex-direction: column; min-height: 100vh; }
+.server-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
 
-  header {
-    background: #1a1a24;
-    border-bottom: 1px solid #2a2a3a;
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
+.server-select label { font-size: 13px; color: var(--muted); }
 
-  header h1 { font-size: 20px; color: #fff; font-weight: 600; }
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 7px 10px;
+  outline: none;
+  cursor: pointer;
+}
+select:focus { border-color: var(--accent); }
+select option { background: var(--surface); }
 
-  .guild-selector { display: flex; align-items: center; gap: 10px; }
-  .guild-selector label { font-size: 13px; color: #888; white-space: nowrap; }
-  .guild-selector select { width: auto; padding: 8px 12px; font-size: 14px; }
+.conn-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.conn-dot.online { background: var(--success); }
+.conn-dot.error { background: var(--danger); }
 
-  .logout-btn { background: none; border: 1px solid #2a2a3a; color: #888; padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
-  .logout-btn:hover { color: #e0e0e0; border-color: #3a3a4a; }
+.btn-logout {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: color .15s, border-color .15s;
+}
+.btn-logout:hover { color: var(--text); border-color: #ffffff30; }
 
-  main {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 0;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 24px;
-    gap: 24px;
-  }
+/* Main layout */
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
 
-  @media (max-width: 768px) {
-    main { grid-template-columns: 1fr; }
-  }
+@media (max-width: 720px) {
+  .main { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+}
 
-  /* Player panel */
-  .player-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
 
-  .now-playing {
-    background: #1a1a24;
-    border: 1px solid #2a2a3a;
-    border-radius: 16px;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 16px;
-  }
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
 
-  .album-art {
-    width: 180px;
-    height: 180px;
-    border-radius: 12px;
-    object-fit: cover;
-    background: #2a2a3a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 48px;
-  }
+/* Now playing */
+.now-playing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 20px;
+}
 
-  .album-art img { width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
+.art-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface2);
+  flex-shrink: 0;
+  box-shadow: 0 20px 60px #00000060;
+}
 
-  .song-info { width: 100%; }
-  .song-title { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .song-artist { font-size: 14px; color: #888; }
+.art-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
-  .progress-bar-wrap { width: 100%; }
-  .progress-times { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 6px; }
-  .progress-bar { width: 100%; height: 4px; background: #2a2a3a; border-radius: 2px; overflow: hidden; }
-  .progress-fill { height: 100%; background: #7c3aed; border-radius: 2px; transition: width 1s linear; }
+.art-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  color: var(--muted);
+}
 
-  .controls { display: flex; align-items: center; gap: 12px; }
+.playing-indicator {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 18px;
+  opacity: 0;
+  transition: opacity .3s;
+}
 
-  /* Search */
-  .search-panel {
-    background: #1a1a24;
-    border: 1px solid #2a2a3a;
-    border-radius: 16px;
-    padding: 20px;
-  }
+.playing-indicator.visible { opacity: 1; }
 
-  .search-panel h2 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 14px; }
+.playing-indicator span {
+  width: 3px;
+  background: #fff;
+  border-radius: 2px;
+  animation: bounce 1.2s ease-in-out infinite;
+}
 
-  .search-row { display: flex; gap: 8px; }
-  .search-row input { flex: 1; }
-  .search-row .btn { padding: 12px 18px; white-space: nowrap; }
+.playing-indicator span:nth-child(1) { height: 10px; animation-delay: 0s; }
+.playing-indicator span:nth-child(2) { height: 16px; animation-delay: .2s; }
+.playing-indicator span:nth-child(3) { height: 8px; animation-delay: .4s; }
+.playing-indicator span:nth-child(4) { height: 14px; animation-delay: .1s; }
 
-  .channel-row { margin-top: 10px; }
-  .channel-row label { font-size: 13px; color: #888; display: block; margin-bottom: 6px; }
+@keyframes bounce {
+  0%, 100% { transform: scaleY(.4); }
+  50% { transform: scaleY(1); }
+}
 
-  /* Queue panel */
-  .queue-panel {
-    background: #1a1a24;
-    border: 1px solid #2a2a3a;
-    border-radius: 16px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+.track-info { text-align: center; width: 100%; }
+.track-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+}
+.track-artist { font-size: 14px; color: var(--muted); }
 
-  .queue-panel h2 { font-size: 16px; font-weight: 600; color: #fff; }
+/* Progress */
+.progress-wrap { width: 100%; }
+.progress-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
 
-  .queue-list { display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; }
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+}
 
-  .queue-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: #0f0f13;
-    border-radius: 8px;
-    font-size: 13px;
-  }
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 1s linear;
+  min-width: 0;
+}
 
-  .queue-thumb {
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
-    object-fit: cover;
-    background: #2a2a3a;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-  }
+/* Controls */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
 
-  .queue-thumb img { width: 100%; height: 100%; border-radius: 6px; object-fit: cover; }
+.ctrl {
+  background: var(--surface2);
+  border: none;
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, transform .1s, color .15s;
+  flex-shrink: 0;
+}
 
-  .queue-info { flex: 1; min-width: 0; }
-  .queue-name { color: #e0e0e0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .queue-meta { color: #555; font-size: 12px; margin-top: 2px; }
+.ctrl:hover { background: #ffffff18; }
+.ctrl:active { transform: scale(.93); }
+.ctrl:disabled { opacity: .3; cursor: not-allowed; }
 
-  .queue-empty { color: #555; font-size: 14px; text-align: center; padding: 20px 0; }
+.ctrl-sm { width: 40px; height: 40px; font-size: 16px; }
+.ctrl-lg { width: 54px; height: 54px; font-size: 22px; background: var(--accent); }
+.ctrl-lg:hover { background: var(--accent-dim); }
+.ctrl-stop { color: #f87171; }
+.ctrl-stop:hover { background: #7f1d1d40; }
 
-  /* Toast */
-  #toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: #1a1a24;
-    border: 1px solid #2a2a3a;
-    border-radius: 10px;
-    padding: 12px 18px;
-    font-size: 14px;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
-    z-index: 100;
-    max-width: 300px;
-  }
+/* Search */
+.search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.search-row input {
+  flex: 1;
+  padding: 11px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s;
+}
+.search-row input:focus { border-color: var(--accent); }
 
-  #toast.show { opacity: 1; transform: translateY(0); }
-  #toast.error { border-color: #7f1d1d; color: #fca5a5; }
-  #toast.success { border-color: #14532d; color: #86efac; }
+.btn-add {
+  padding: 11px 18px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.btn-add:hover { background: var(--accent-dim); }
+.btn-add:disabled { opacity: .5; cursor: not-allowed; }
 
-  .idle-msg { color: #555; font-size: 16px; }
+.channel-wrap label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+.channel-wrap select { width: 100%; }
 
-  select option { background: #1a1a24; }
+/* Queue */
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 500px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  transition: background .1s;
+  cursor: default;
+}
+.queue-item:hover { background: var(--surface2); }
+
+.q-num { font-size: 12px; color: var(--muted); width: 18px; text-align: center; flex-shrink: 0; }
+
+.q-art {
+  width: 38px; height: 38px;
+  border-radius: 6px;
+  background: var(--surface2);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--muted);
+}
+.q-art img { width: 100%; height: 100%; object-fit: cover; }
+
+.q-info { flex: 1; min-width: 0; }
+.q-title { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.queue-empty { text-align: center; padding: 32px 0; color: var(--muted); font-size: 14px; }
+
+/* Overlays */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #00000080;
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+}
+.overlay.show { display: flex; }
+
+.overlay-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 32px;
+  width: min(360px, 92vw);
+  text-align: center;
+}
+
+.overlay-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.overlay-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+.overlay-card .field { text-align: left; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  z-index: 100;
+  max-width: 300px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok { color: #86efac; border-color: #14532d40; }
+#toast.err { color: #fca5a5; border-color: #7f1d1d40; }
+
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <!-- Login -->
 <div id="login-screen">
-  <div class="login-box">
-    <h1>🎵 Muse</h1>
-    <p>Enter your dashboard password</p>
-    <input type="password" id="password-input" placeholder="Password" autocomplete="current-password">
-    <button class="btn btn-primary" onclick="login()">Sign in</button>
-    <div class="error-msg" id="login-error"></div>
+  <div class="login-card">
+    <div class="login-logo">🎵</div>
+    <h1>Muse Dashboard</h1>
+    <p>Sign in to control your music bot</p>
+    <div class="field">
+      <input type="password" id="pw" placeholder="Password" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="login-btn" onclick="login()">Sign in</button>
+    <div class="login-error" id="login-err"></div>
+  </div>
+</div>
+
+<!-- Re-login modal (shown when token expires, not full logout) -->
+<div class="overlay" id="relogin-overlay">
+  <div class="overlay-card">
+    <h2>Session expired</h2>
+    <p>Your session expired. Enter your password to continue.</p>
+    <div class="field"><input type="password" id="relogin-pw" placeholder="Password"></div>
+    <button class="btn-login" style="margin-top:12px" onclick="relogin()">Continue</button>
+    <div class="login-error" id="relogin-err"></div>
+  </div>
+</div>
+
+<!-- Reconnecting overlay (brief network hiccup, NOT a logout) -->
+<div class="overlay" id="reconnect-overlay">
+  <div class="overlay-card">
+    <div class="spinner"></div>
+    <h2>Reconnecting…</h2>
+    <p>Lost connection to the bot. Retrying automatically.</p>
   </div>
 </div>
 
 <!-- App -->
 <div id="app">
-  <header>
-    <h1>🎵 Muse</h1>
-    <div class="guild-selector">
+  <header class="header">
+    <div class="header-logo">🎵 <span>Muse</span></div>
+    <div class="server-select">
+      <div class="conn-dot" id="conn-dot"></div>
       <label>Server</label>
-      <select id="guild-select" onchange="onGuildChange()">
-        <option>Loading...</option>
-      </select>
+      <select id="guild-sel" onchange="onGuildChange()"></select>
     </div>
-    <button class="logout-btn" onclick="logout()">Log out</button>
+    <button class="btn-logout" onclick="logout()">Log out</button>
   </header>
 
-  <main>
-    <div class="player-panel">
+  <div class="main">
+    <!-- Left column -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
       <!-- Now Playing -->
-      <div class="now-playing" id="now-playing">
-        <div class="album-art" id="album-art">🎵</div>
-        <div class="song-info">
-          <div class="song-title" id="song-title">Nothing playing</div>
-          <div class="song-artist" id="song-artist">—</div>
-        </div>
-        <div class="progress-bar-wrap">
-          <div class="progress-times">
-            <span id="pos-current">0:00</span>
-            <span id="pos-total">0:00</span>
+      <div class="card now-playing">
+        <div class="art-wrap" id="art-wrap">
+          <div class="art-placeholder" id="art-placeholder">🎵</div>
+          <img id="art-img" src="" alt="" style="display:none;position:absolute;inset:0">
+          <div class="playing-indicator" id="playing-ind">
+            <span></span><span></span><span></span><span></span>
           </div>
-          <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
         </div>
+
+        <div class="track-info">
+          <div class="track-title" id="track-title">Nothing playing</div>
+          <div class="track-artist" id="track-artist">—</div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-times">
+            <span id="t-cur">0:00</span>
+            <span id="t-tot">0:00</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog" style="width:0%"></div>
+          </div>
+        </div>
+
         <div class="controls">
-          <button class="btn btn-icon" id="btn-pause" onclick="togglePause()" title="Pause / Resume">⏸</button>
-          <button class="btn btn-play" onclick="skip()" title="Skip">⏭</button>
-          <button class="btn btn-icon btn-danger btn-sm" onclick="stop()" title="Stop & disconnect">■</button>
+          <button class="ctrl ctrl-sm ctrl-stop" id="btn-stop" onclick="stop()" title="Stop (S)">■</button>
+          <button class="ctrl ctrl-lg" id="btn-play" onclick="togglePause()" title="Play/Pause (Space)">▶</button>
+          <button class="ctrl ctrl-sm" id="btn-skip" onclick="skip()" title="Skip (→)">⏭</button>
         </div>
       </div>
 
       <!-- Search -->
-      <div class="search-panel">
-        <h2>Add to Queue</h2>
+      <div class="card">
+        <div class="card-title">Add to queue</div>
         <div class="search-row">
-          <input type="text" id="search-input" placeholder="Song name or Spotify/YouTube URL" onkeydown="if(event.key==='Enter') addToQueue()">
-          <button class="btn btn-primary" style="width:auto" onclick="addToQueue()">Add</button>
+          <input type="text" id="q-input" placeholder="Song name, Spotify or YouTube URL"
+            onkeydown="if(event.key==='Enter')addSong()">
+          <button class="btn-add" id="btn-add" onclick="addSong()">Add</button>
         </div>
-        <div class="channel-row">
+        <div class="channel-wrap">
           <label>Voice channel</label>
-          <select id="channel-select">
-            <option value="">Select a server first</option>
-          </select>
+          <select id="ch-sel"></select>
         </div>
       </div>
+
     </div>
 
-    <!-- Queue -->
-    <div class="queue-panel">
-      <h2>Queue</h2>
+    <!-- Right column: Queue -->
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="card-title">Up next</div>
       <div class="queue-list" id="queue-list">
         <div class="queue-empty">Queue is empty</div>
       </div>
     </div>
-  </main>
+  </div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-  let token = localStorage.getItem('muse_token');
-  let selectedGuildId = localStorage.getItem('muse_guild');
-  let pollTimer = null;
-  let currentStatus = null;
+const TOKEN_KEY = 'muse_tok';
+const GUILD_KEY = 'muse_guild';
 
-  // Init
-  if (token) showApp();
+let token = localStorage.getItem(TOKEN_KEY);
+let guildId = localStorage.getItem(GUILD_KEY);
+let pollTimer = null;
+let failCount = 0;
+let lastStatus = null;
+const MAX_FAIL = 4; // ~8s before showing reconnect overlay
 
-  async function api(method, path, body) {
-    const res = await fetch(path, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: body ? JSON.stringify(body) : undefined,
+// ── Boot ──────────────────────────────────────────────────────────────
+if (token) initApp();
+
+// ── Auth ──────────────────────────────────────────────────────────────
+async function login() {
+  const pw = document.getElementById('pw').value;
+  const err = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  err.textContent = '';
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pw}),
     });
-    if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
-    return res.json();
-  }
-
-  async function login() {
-    const pw = document.getElementById('password-input').value;
-    document.getElementById('login-error').textContent = '';
-    try {
-      const data = await fetch('/api/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: pw}),
-      }).then(r => r.json());
-
-      if (data.token) {
-        token = data.token;
-        localStorage.setItem('muse_token', token);
-        showApp();
-      } else {
-        document.getElementById('login-error').textContent = 'Wrong password.';
-      }
-    } catch {
-      document.getElementById('login-error').textContent = 'Connection error.';
-    }
-  }
-
-  function logout() {
-    token = null;
-    localStorage.removeItem('muse_token');
-    clearInterval(pollTimer);
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
-  }
-
-  async function showApp() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    await loadGuilds();
-    startPolling();
-  }
-
-  async function loadGuilds() {
-    try {
-      const guilds = await api('GET', '/api/guilds');
-      const sel = document.getElementById('guild-select');
-      sel.innerHTML = guilds.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
-
-      if (selectedGuildId && guilds.find(g => g.id === selectedGuildId)) {
-        sel.value = selectedGuildId;
-      } else if (guilds.length > 0) {
-        selectedGuildId = guilds[0].id;
-        sel.value = selectedGuildId;
-      }
-
-      await loadChannels();
-    } catch {}
-  }
-
-  async function loadChannels() {
-    if (!selectedGuildId) return;
-    try {
-      const channels = await api('GET', `/api/guilds/${selectedGuildId}/channels`);
-      const sel = document.getElementById('channel-select');
-      if (channels.length === 0) {
-        sel.innerHTML = '<option value="">No voice channels found</option>';
-      } else {
-        sel.innerHTML = channels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      }
-    } catch {}
-  }
-
-  async function onGuildChange() {
-    selectedGuildId = document.getElementById('guild-select').value;
-    localStorage.setItem('muse_guild', selectedGuildId);
-    await loadChannels();
-    await poll();
-  }
-
-  function startPolling() {
-    poll();
-    pollTimer = setInterval(poll, 2000);
-  }
-
-  async function poll() {
-    if (!selectedGuildId || !token) return;
-    try {
-      const data = await api('GET', `/api/guilds/${selectedGuildId}/status`);
-      renderStatus(data);
-    } catch {}
-  }
-
-  function renderStatus(data) {
-    currentStatus = data;
-    const isPlaying = data.status === 0;
-    const isPaused = data.status === 1;
-    const isIdle = data.status === 2 || !data.current;
-
-    document.getElementById('btn-pause').textContent = isPlaying ? '⏸' : '▶';
-    document.getElementById('btn-pause').classList.toggle('active', isPaused);
-
-    if (data.current) {
-      document.getElementById('song-title').textContent = data.current.title;
-      document.getElementById('song-artist').textContent = data.current.artist || '—';
-
-      const art = document.getElementById('album-art');
-      if (data.current.thumbnailUrl) {
-        art.innerHTML = `<img src="${data.current.thumbnailUrl}" alt="">`;
-      } else {
-        art.innerHTML = '🎵';
-      }
-
-      const pos = data.position || 0;
-      const len = data.current.length || 1;
-      document.getElementById('pos-current').textContent = fmtTime(pos);
-      document.getElementById('pos-total').textContent = fmtTime(len);
-      document.getElementById('progress-fill').style.width = `${Math.min(100, (pos / len) * 100)}%`;
+    const d = await r.json();
+    if (d.token) {
+      token = d.token;
+      localStorage.setItem(TOKEN_KEY, token);
+      initApp();
     } else {
-      document.getElementById('song-title').textContent = 'Nothing playing';
-      document.getElementById('song-artist').textContent = '—';
-      document.getElementById('album-art').innerHTML = '🎵';
-      document.getElementById('pos-current').textContent = '0:00';
-      document.getElementById('pos-total').textContent = '0:00';
-      document.getElementById('progress-fill').style.width = '0%';
+      err.textContent = d.error ?? 'Wrong password.';
     }
+  } catch {
+    err.textContent = 'Could not reach server.';
+  } finally {
+    btn.textContent = 'Sign in';
+    btn.disabled = false;
+  }
+}
 
-    const queueList = document.getElementById('queue-list');
-    if (!data.queue || data.queue.length === 0) {
-      queueList.innerHTML = '<div class="queue-empty">Queue is empty</div>';
+async function relogin() {
+  const pw = document.getElementById('relogin-pw').value;
+  const err = document.getElementById('relogin-err');
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pw}),
+    });
+    const d = await r.json();
+    if (d.token) {
+      token = d.token;
+      localStorage.setItem(TOKEN_KEY, token);
+      document.getElementById('relogin-pw').value = '';
+      document.getElementById('relogin-overlay').classList.remove('show');
+      failCount = 0;
     } else {
-      queueList.innerHTML = data.queue.map(s => `
-        <div class="queue-item">
-          <div class="queue-thumb">
-            ${s.thumbnailUrl ? `<img src="${s.thumbnailUrl}" alt="">` : '🎵'}
-          </div>
-          <div class="queue-info">
-            <div class="queue-name">${esc(s.title)}</div>
-            <div class="queue-meta">${esc(s.artist)} · ${fmtTime(s.length)}</div>
-          </div>
-        </div>
-      `).join('');
+      err.textContent = d.error ?? 'Wrong password.';
     }
+  } catch {
+    err.textContent = 'Could not reach server.';
   }
+}
 
-  async function addToQueue() {
-    const query = document.getElementById('search-input').value.trim();
-    const channelId = document.getElementById('channel-select').value;
-    if (!query) { toast('Enter a song name or URL', 'error'); return; }
-    if (!channelId) { toast('Select a voice channel', 'error'); return; }
-    if (!selectedGuildId) { toast('Select a server', 'error'); return; }
+function logout() {
+  token = null;
+  localStorage.removeItem(TOKEN_KEY);
+  clearInterval(pollTimer);
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
 
-    try {
-      const res = await api('POST', `/api/guilds/${selectedGuildId}/play`, {query, channelId});
-      if (res.error) { toast(res.error, 'error'); return; }
-      document.getElementById('search-input').value = '';
-      toast(`Added ${res.added} song${res.added !== 1 ? 's' : ''}`, 'success');
-      await poll();
-    } catch (e) {
-      toast('Failed to add song', 'error');
-    }
-  }
-
-  async function togglePause() {
-    if (!selectedGuildId) return;
-    try {
-      const isPlaying = currentStatus?.status === 0;
-      if (isPlaying) {
-        await api('POST', `/api/guilds/${selectedGuildId}/pause`);
-      } else {
-        await api('POST', `/api/guilds/${selectedGuildId}/resume`);
-      }
-      await poll();
-    } catch {}
-  }
-
-  async function skip() {
-    if (!selectedGuildId) return;
-    try {
-      const res = await api('POST', `/api/guilds/${selectedGuildId}/skip`);
-      if (res.error) { toast(res.error, 'error'); return; }
-      await poll();
-    } catch {}
-  }
-
-  async function stop() {
-    if (!selectedGuildId) return;
-    try {
-      await api('POST', `/api/guilds/${selectedGuildId}/stop`);
-      await poll();
-    } catch {}
-  }
-
-  function fmtTime(s) {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  }
-
-  function esc(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  let toastTimer;
-  function toast(msg, type = 'success') {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.className = `show ${type}`;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.className = ''; }, 3000);
-  }
-
-  document.getElementById('password-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') login();
+// ── API helper ────────────────────────────────────────────────────────
+// Returns {ok: true, data} or {ok: false, status, data}
+async function api(method, path, body) {
+  const r = await fetch(path, {
+    method,
+    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+    body: body ? JSON.stringify(body) : undefined,
   });
+  const data = await r.json().catch(() => ({}));
+  return {ok: r.ok, status: r.status, data};
+}
+
+async function apiCall(method, path, body) {
+  try {
+    const res = await api(method, path, body);
+    if (res.status === 401) {
+      // Token invalid — show re-login modal, don't hard-logout
+      document.getElementById('relogin-overlay').classList.add('show');
+      throw new Error('auth');
+    }
+    failCount = 0;
+    document.getElementById('reconnect-overlay').classList.remove('show');
+    setConnDot('online');
+    return res;
+  } catch (e) {
+    if (e.message === 'auth') throw e;
+    // Network error — increment fail counter, show reconnect overlay after threshold
+    failCount++;
+    setConnDot('error');
+    if (failCount >= MAX_FAIL) {
+      document.getElementById('reconnect-overlay').classList.add('show');
+    }
+    throw e;
+  }
+}
+
+function setConnDot(state) {
+  const d = document.getElementById('conn-dot');
+  d.className = 'conn-dot ' + state;
+}
+
+// ── App init ──────────────────────────────────────────────────────────
+async function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  await loadGuilds();
+  startPoll();
+}
+
+async function loadGuilds() {
+  try {
+    const res = await apiCall('GET', '/api/guilds');
+    const guilds = res.data;
+    const sel = document.getElementById('guild-sel');
+    sel.innerHTML = guilds.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+    if (guildId && guilds.find(g => g.id === guildId)) {
+      sel.value = guildId;
+    } else if (guilds.length) {
+      guildId = guilds[0].id;
+      sel.value = guildId;
+      localStorage.setItem(GUILD_KEY, guildId);
+    }
+    await loadChannels();
+  } catch {}
+}
+
+async function loadChannels() {
+  if (!guildId) return;
+  try {
+    const res = await apiCall('GET', `/api/guilds/${guildId}/channels`);
+    const chs = res.data;
+    const sel = document.getElementById('ch-sel');
+    sel.innerHTML = chs.length
+      ? chs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
+      : '<option value="">No voice channels found</option>';
+  } catch {}
+}
+
+async function onGuildChange() {
+  guildId = document.getElementById('guild-sel').value;
+  localStorage.setItem(GUILD_KEY, guildId);
+  await loadChannels();
+  await poll();
+}
+
+// ── Polling ───────────────────────────────────────────────────────────
+function startPoll() {
+  poll();
+  pollTimer = setInterval(poll, 2000);
+}
+
+async function poll() {
+  if (!guildId || !token) return;
+  try {
+    const res = await apiCall('GET', `/api/guilds/${guildId}/status`);
+    renderStatus(res.data);
+  } catch {}
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function renderStatus(d) {
+  lastStatus = d;
+  const playing = d.status === 0; // STATUS.PLAYING
+
+  // Art
+  const artImg = document.getElementById('art-img');
+  const artPlaceholder = document.getElementById('art-placeholder');
+  if (d.current?.thumbnailUrl) {
+    artImg.src = d.current.thumbnailUrl;
+    artImg.style.display = 'block';
+    artPlaceholder.style.display = 'none';
+  } else {
+    artImg.style.display = 'none';
+    artPlaceholder.style.display = 'flex';
+  }
+
+  document.getElementById('playing-ind').classList.toggle('visible', playing);
+
+  // Track info
+  document.getElementById('track-title').textContent = d.current?.title ?? 'Nothing playing';
+  document.getElementById('track-artist').textContent = d.current?.artist || '—';
+
+  // Play button icon
+  document.getElementById('btn-play').textContent = playing ? '⏸' : '▶';
+
+  // Progress
+  const pos = d.position ?? 0;
+  const len = d.current?.length ?? 0;
+  document.getElementById('t-cur').textContent = fmt(pos);
+  document.getElementById('t-tot').textContent = fmt(len);
+  document.getElementById('prog').style.width = len > 0 ? `${Math.min(100, (pos / len) * 100)}%` : '0%';
+
+  // Queue
+  const ql = document.getElementById('queue-list');
+  if (!d.queue?.length) {
+    ql.innerHTML = '<div class="queue-empty">Queue is empty</div>';
+  } else {
+    ql.innerHTML = d.queue.map((s, i) => `
+      <div class="queue-item">
+        <div class="q-num">${i + 1}</div>
+        <div class="q-art">
+          ${s.thumbnailUrl ? `<img src="${esc(s.thumbnailUrl)}" alt="">` : '🎵'}
+        </div>
+        <div class="q-info">
+          <div class="q-title">${esc(s.title)}</div>
+          <div class="q-sub">${esc(s.artist || '')} · ${fmt(s.length)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// ── Controls ──────────────────────────────────────────────────────────
+async function addSong() {
+  const query = document.getElementById('q-input').value.trim();
+  const chId = document.getElementById('ch-sel').value;
+  if (!query) { toast('Enter a song name or URL', 'err'); return; }
+  if (!chId) { toast('Select a voice channel', 'err'); return; }
+  const btn = document.getElementById('btn-add');
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res = await apiCall('POST', `/api/guilds/${guildId}/play`, {query, channelId: chId});
+    if (!res.ok) { toast(res.data.error ?? 'Error', 'err'); return; }
+    document.getElementById('q-input').value = '';
+    toast(`Added ${res.data.added} song${res.data.added !== 1 ? 's' : ''}`, 'ok');
+    await poll();
+  } catch (e) { if (e.message !== 'auth') toast('Failed to add song', 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Add'; }
+}
+
+async function togglePause() {
+  if (!lastStatus) return;
+  const playing = lastStatus.status === 0;
+  try {
+    await apiCall('POST', `/api/guilds/${guildId}/${playing ? 'pause' : 'resume'}`);
+    await poll();
+  } catch {}
+}
+
+async function skip() {
+  try {
+    const res = await apiCall('POST', `/api/guilds/${guildId}/skip`);
+    if (!res.ok) toast(res.data.error ?? 'Error', 'err');
+    else await poll();
+  } catch {}
+}
+
+async function stop() {
+  try {
+    await apiCall('POST', `/api/guilds/${guildId}/stop`);
+    await poll();
+  } catch {}
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); togglePause(); }
+  if (e.key === 'ArrowRight') skip();
+  if (e.key === 's' || e.key === 'S') stop();
+});
+
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+document.getElementById('relogin-pw').addEventListener('keydown', e => { if (e.key === 'Enter') relogin(); });
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function fmt(s) {
+  s = Math.floor(s || 0);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+let toastT;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { el.className = ''; }, 3000);
+}
 </script>
 </body>
 </html>
