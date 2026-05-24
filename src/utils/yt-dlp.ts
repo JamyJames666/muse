@@ -245,47 +245,67 @@ export const updateYtDlp = async (): Promise<YtDlpUpdateResult> => {
   };
 };
 
-export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlpMediaSource> => {
-  try {
-    const {stdout} = await execa(getExecutable(), [
-      '--dump-single-json',
-      '--no-playlist',
-      '--skip-download',
-      '--no-warnings',
-      '--no-cache-dir',
-      '-f',
-      'bestaudio/best',
-      '-S',
-      'proto:https',
-      '--extractor-args',
-      'youtube:player_client=tv_embedded,android_vr,web',
-      toYouTubeWatchUrl(videoIdOrUrl),
-    ], {
-      timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
-    });
+// Try multiple client combinations in order — if one is blocked, fall back to next
+const PLAYER_CLIENT_ATTEMPTS = [
+  'tv_embedded,android_vr,web',
+  'tv_embedded,web',
+  'mweb,web',
+  'web',
+];
 
-    const response = JSON.parse(stdout) as YtDlpResponse;
-    const download = response.requested_downloads?.at(0) ?? response;
+const extractWithClients = async (videoIdOrUrl: string, clients: string): Promise<YtDlpMediaSource> => {
+  const {stdout} = await execa(getExecutable(), [
+    '--dump-single-json',
+    '--no-playlist',
+    '--skip-download',
+    '--no-warnings',
+    '--no-cache-dir',
+    '-f',
+    'bestaudio/best',
+    '-S',
+    'proto:https',
+    '--extractor-args',
+    `youtube:player_client=${clients}`,
+    toYouTubeWatchUrl(videoIdOrUrl),
+  ], {
+    timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
+  });
 
-    if (!download.url) {
-      throw new Error('yt-dlp did not return a playable media URL.');
-    }
+  const response = JSON.parse(stdout) as YtDlpResponse;
+  const download = response.requested_downloads?.at(0) ?? response;
 
-    return {
-      url: download.url,
-      headers: normalizeHeaders(download.http_headers ?? response.http_headers),
-      isLive: Boolean(response.is_live ?? (response.live_status === 'is_live')),
-    };
-  } catch (error: unknown) {
-    if (isExecaError(error)) {
-      const detail = error.stderr?.trim() ?? error.shortMessage ?? 'Unknown yt-dlp error';
-      throw new Error(`yt-dlp failed to extract media: ${detail}`);
-    }
-
-    if (error instanceof SyntaxError) {
-      throw new Error('yt-dlp returned an invalid response.');
-    }
-
-    throw error;
+  if (!download.url) {
+    throw new Error('yt-dlp did not return a playable media URL.');
   }
+
+  return {
+    url: download.url,
+    headers: normalizeHeaders(download.http_headers ?? response.http_headers),
+    isLive: Boolean(response.is_live ?? (response.live_status === 'is_live')),
+  };
+};
+
+export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlpMediaSource> => {
+  let lastError: unknown;
+
+  for (const clients of PLAYER_CLIENT_ATTEMPTS) {
+    try {
+      return await extractWithClients(videoIdOrUrl, clients); // eslint-disable-line no-await-in-loop
+    } catch (error: unknown) {
+      lastError = error;
+    }
+  }
+
+  if (isExecaError(lastError)) {
+    const detail = (lastError as {stderr?: string; shortMessage?: string}).stderr?.trim()
+      ?? (lastError as {shortMessage?: string}).shortMessage
+      ?? 'Unknown yt-dlp error';
+    throw new Error(`yt-dlp failed to extract media: ${detail}`);
+  }
+
+  if (lastError instanceof SyntaxError) {
+    throw new Error('yt-dlp returned an invalid response.');
+  }
+
+  throw lastError;
 };
