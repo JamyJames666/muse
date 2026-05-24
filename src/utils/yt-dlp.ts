@@ -1,5 +1,6 @@
 import {execa} from 'execa';
 import {constants as fsConstants, promises as fs} from 'fs';
+import {Readable} from 'stream';
 import path from 'path';
 
 const YT_DLP_VERSION_TIMEOUT_MS = 15_000;
@@ -245,8 +246,7 @@ export const updateYtDlp = async (): Promise<YtDlpUpdateResult> => {
   };
 };
 
-// Try multiple client combinations in order — if one is blocked, fall back to next
-const PLAYER_CLIENT_ATTEMPTS = [
+export const PLAYER_CLIENT_ATTEMPTS = [
   'tv_embedded,android_vr,web',
   'tv_embedded,web',
   'mweb,web',
@@ -308,4 +308,31 @@ export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlp
   }
 
   throw lastError;
+};
+
+export interface YtDlpStream {
+  readonly stream: Readable;
+  readonly kill: () => void;
+}
+
+export const createYtDlpAudioStream = (videoIdOrUrl: string, clients = PLAYER_CLIENT_ATTEMPTS[0]): YtDlpStream => {
+  const proc = execa(getExecutable(), [
+    '--format', 'bestaudio',
+    '--output', '-',
+    '--no-playlist',
+    '--quiet',
+    '--no-warnings',
+    '--no-cache-dir',
+    '--extractor-args', `youtube:player_client=${clients}`,
+    toYouTubeWatchUrl(videoIdOrUrl),
+  ], {buffer: false});
+
+  if (!proc.stdout) {
+    throw new Error('yt-dlp process has no stdout stream');
+  }
+
+  return {
+    stream: proc.stdout as unknown as Readable,
+    kill: () => { proc.kill('SIGKILL'); },
+  };
 };

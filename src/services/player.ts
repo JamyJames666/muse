@@ -22,7 +22,7 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {getYouTubeMediaSource} from '../utils/yt-dlp.js';
+import {getYouTubeMediaSource, createYtDlpAudioStream} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
 
 export enum MediaSource {
@@ -537,7 +537,7 @@ export default class {
     }
 
     if (song.source === MediaSource.HLS) {
-      return this.createReadStream({url: song.url, cacheKey: song.url});
+      return this.createReadStream({input: song.url, cacheKey: song.url});
     }
 
     let ffmpegInput: string | null;
@@ -547,24 +547,26 @@ export default class {
     ffmpegInput = await this.fileCache.getPathFor(this.getHashForCache(song.url));
 
     if (!ffmpegInput) {
+      const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
+
+      if (!options.seek) {
+        // Pipe yt-dlp stdout directly to ffmpeg so yt-dlp handles DASH segment fetching internally
+        const {stream: ytdlpStream, kill: ytdlpKill} = createYtDlpAudioStream(song.url);
+        shouldCacheVideo = !song.isLive && song.length < MAX_CACHE_LENGTH_SECONDS;
+        debug(shouldCacheVideo ? 'Caching video (piped)' : 'Streaming via yt-dlp pipe');
+        return this.createReadStream({
+          input: ytdlpStream,
+          ytdlpKill,
+          cacheKey: song.url,
+          cache: shouldCacheVideo,
+        });
+      }
+
+      // Seek: need a seekable URL; pipe approach doesn't support -ss
       const mediaSource = await getYouTubeMediaSource(song.url);
       ffmpegInput = mediaSource.url;
 
-      // Don't cache livestreams or long videos
-      const MAX_CACHE_LENGTH_SECONDS = 30 * 60; // 30 minutes
-      shouldCacheVideo = !mediaSource.isLive && song.length < MAX_CACHE_LENGTH_SECONDS && !options.seek;
-
-      debug(shouldCacheVideo ? 'Caching video' : 'Not caching video');
-
-      ffmpegInputOptions.push(...[
-        '-reconnect',
-        '1',
-        '-reconnect_streamed',
-        '1',
-        '-reconnect_delay_max',
-        '5',
-      ]);
-
+      ffmpegInputOptions.push('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
       const headerOptions = this.buildFfmpegHeaderOptions(mediaSource.headers);
       ffmpegInputOptions.push(...headerOptions);
     }
@@ -578,7 +580,7 @@ export default class {
     }
 
     return this.createReadStream({
-      url: ffmpegInput,
+      input: ffmpegInput,
       cacheKey: song.url,
       ffmpegInputOptions,
       cache: shouldCacheVideo,
@@ -711,20 +713,19 @@ export default class {
         if (cached) return;
 
         debug(`Preloading: ${next.title}`);
-        const mediaSource = await getYouTubeMediaSource(next.url);
+        const {stream: ytdlpStream, kill: ytdlpKill} = createYtDlpAudioStream(next.url);
         const cacheStream = this.fileCache.createWriteStream(hash);
 
-        ffmpeg(mediaSource.url)
-          .inputOptions([
-            '-reconnect', '1',
-            '-reconnect_streamed', '1',
-            '-reconnect_delay_max', '5',
-            ...this.buildFfmpegHeaderOptions(mediaSource.headers),
-          ])
+        ffmpeg(ytdlpStream)
+          .inputOptions([])
           .noVideo()
           .audioCodec('libopus')
           .outputFormat('webm')
-          .on('error', err => { debug(`Preload error for ${next.title}: ${err.message}`); })
+          .on('error', err => {
+            ytdlpKill();
+            debug(`Preload error for ${next.title}: ${err.message}`);
+          })
+          .on('end', () => { debug(`Preloaded: ${next.title}`); })
           .pipe(cacheStream);
       } catch (err) {
         debug(`Preload failed for ${next.title}: ${String(err)}`);
@@ -746,7 +747,7 @@ export default class {
     return ['-headers', `${headerLines}\r\n`];
   }
 
-  private async createReadStream(options: {url: string; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean}): Promise<Readable> {
+  private async createReadStream(options: {input: string | Readable; ytdlpKill?: () => void; cacheKey: string; ffmpegInputOptions?: string[]; cache?: boolean}): Promise<Readable> {
     return new Promise((resolve, reject) => {
       const capacitor = new WriteStream();
 
@@ -758,8 +759,12 @@ export default class {
       const returnedStream = capacitor.createReadStream();
       let hasReturnedStreamClosed = false;
 
-      const stream = ffmpeg(options.url)
-        .inputOptions(options?.ffmpegInputOptions ?? ['-re'])
+      const inputOptions = typeof options.input === 'string'
+        ? (options?.ffmpegInputOptions ?? ['-re'])
+        : [];
+
+      const stream = ffmpeg(options.input)
+        .inputOptions(inputOptions)
         .noVideo()
         .audioCodec('libopus')
         .outputFormat('webm')
@@ -777,6 +782,7 @@ export default class {
       returnedStream.on('close', () => {
         if (!options.cache) {
           stream.kill('SIGKILL');
+          options.ytdlpKill?.();
         }
 
         hasReturnedStreamClosed = true;
