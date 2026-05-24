@@ -351,6 +351,30 @@ select option { background: var(--surface); }
 .channel-wrap label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
 .channel-wrap select { width: 100%; }
 
+/* Source tabs */
+.src-tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+.src-tab {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.src-tab:hover { color: var(--text); }
+.src-tab.active { background: var(--surface2); color: var(--text); border-color: #ffffff25; }
+.src-tab.yt.active { border-color: #ef444440; color: #fca5a5; }
+.src-tab.sp.active { border-color: #22c55e40; color: #86efac; }
+.src-hint { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+
 /* Queue */
 .queue-list {
   display: flex;
@@ -541,8 +565,13 @@ select option { background: var(--surface); }
       <!-- Search -->
       <div class="card">
         <div class="card-title">Add to queue</div>
+        <div class="src-tabs">
+          <button class="src-tab yt active" id="tab-yt" onclick="setTab('yt')">▶ YouTube</button>
+          <button class="src-tab sp" id="tab-sp" onclick="setTab('sp')">♫ Spotify</button>
+        </div>
+        <div class="src-hint" id="src-hint">Search by song name or paste a YouTube URL</div>
         <div class="search-row">
-          <input type="text" id="q-input" placeholder="Song name, Spotify or YouTube URL"
+          <input type="text" id="q-input" placeholder="Song name or YouTube URL"
             onkeydown="if(event.key==='Enter')addSong()">
           <button class="btn-add" id="btn-add" onclick="addSong()">Add</button>
         </div>
@@ -796,6 +825,24 @@ function renderStatus(d) {
 }
 
 // ── Controls ──────────────────────────────────────────────────────────
+let activeTab = 'yt';
+
+function setTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-yt').classList.toggle('active', tab === 'yt');
+  document.getElementById('tab-sp').classList.toggle('active', tab === 'sp');
+  const input = document.getElementById('q-input');
+  const hint = document.getElementById('src-hint');
+  if (tab === 'yt') {
+    input.placeholder = 'Song name or YouTube URL';
+    hint.textContent = 'Search by song name or paste a YouTube URL';
+  } else {
+    input.placeholder = 'Paste a Spotify track, album or playlist URL';
+    hint.textContent = 'Paste any open.spotify.com link';
+  }
+  input.focus();
+}
+
 async function addSong() {
   const query = document.getElementById('q-input').value.trim();
   const chId = document.getElementById('ch-sel').value;

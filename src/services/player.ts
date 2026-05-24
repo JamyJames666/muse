@@ -84,6 +84,7 @@ export default class {
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
   private emptyChannelTimer: NodeJS.Timeout | null = null;
+  private readonly preloadingUrls = new Set<string>();
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
   private hasRegisteredVoiceActivityListener = false;
@@ -258,6 +259,9 @@ export default class {
 
       this.status = STATUS.PLAYING;
       this.nowPlaying = currentSong;
+
+      // Pre-download the next song so it's cached before it's needed
+      this.preloadNextSong();
 
       if (currentSong.url === this.lastSongURL) {
         this.startTrackingPosition();
@@ -690,6 +694,44 @@ export default class {
         });
       }
     }
+  }
+
+  private preloadNextSong(): void {
+    const next = this.queue[this.queuePosition + 1];
+    if (!next || next.isLive || next.source !== MediaSource.Youtube || next.length > 30 * 60) return;
+
+    const hash = this.getHashForCache(next.url);
+    if (this.preloadingUrls.has(hash)) return;
+
+    this.preloadingUrls.add(hash);
+
+    void (async () => {
+      try {
+        const cached = await this.fileCache.getPathFor(hash);
+        if (cached) return;
+
+        debug(`Preloading: ${next.title}`);
+        const mediaSource = await getYouTubeMediaSource(next.url);
+        const cacheStream = this.fileCache.createWriteStream(hash);
+
+        ffmpeg(mediaSource.url)
+          .inputOptions([
+            '-reconnect', '1',
+            '-reconnect_streamed', '1',
+            '-reconnect_delay_max', '5',
+            ...this.buildFfmpegHeaderOptions(mediaSource.headers),
+          ])
+          .noVideo()
+          .audioCodec('libopus')
+          .outputFormat('webm')
+          .on('error', err => { debug(`Preload error for ${next.title}: ${err.message}`); })
+          .pipe(cacheStream);
+      } catch (err) {
+        debug(`Preload failed for ${next.title}: ${String(err)}`);
+      } finally {
+        this.preloadingUrls.delete(hash);
+      }
+    })();
   }
 
   private buildFfmpegHeaderOptions(headers: Record<string, string>) {
