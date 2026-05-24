@@ -258,7 +258,7 @@ export const getYouTubeMediaSource = async (videoIdOrUrl: string): Promise<YtDlp
       '-S',
       'proto:https',
       '--extractor-args',
-      'youtube:player_client=android_vr,default,-ios',
+      'youtube:player_client=tv_embedded,android_vr,web',
       toYouTubeWatchUrl(videoIdOrUrl),
     ], {
       timeout: YT_DLP_EXTRACT_TIMEOUT_MS,

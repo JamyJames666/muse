@@ -83,6 +83,7 @@ export default class {
   private positionInSeconds = 0;
   private readonly fileCache: FileCacheProvider;
   private disconnectTimer: NodeJS.Timeout | null = null;
+  private emptyChannelTimer: NodeJS.Timeout | null = null;
 
   private readonly channelToSpeakingUsers: Map<string, Set<string>> = new Map();
   private hasRegisteredVoiceActivityListener = false;
@@ -458,6 +459,23 @@ export default class {
 
     this.queuePosition = 0;
     this.queue = newQueue;
+  }
+
+  scheduleEmptyChannelDisconnect(seconds: number): void {
+    if (this.emptyChannelTimer) return; // already scheduled
+    this.emptyChannelTimer = setTimeout(() => {
+      this.emptyChannelTimer = null;
+      if (this.voiceConnection) {
+        this.disconnect();
+      }
+    }, seconds * 1000);
+  }
+
+  cancelEmptyChannelDisconnect(): void {
+    if (this.emptyChannelTimer) {
+      clearTimeout(this.emptyChannelTimer);
+      this.emptyChannelTimer = null;
+    }
   }
 
   removeFromQueue(index: number, amount = 1): void {
