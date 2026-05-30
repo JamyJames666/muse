@@ -612,7 +612,14 @@ export default class {
       // Resolve ytsearch1: queries to a real YouTube video ID first so errors surface properly
       if (song.url.startsWith('ytsearch1:')) {
         const query = song.url.slice('ytsearch1:'.length);
-        const result = await searchWithYtDlp(query);
+        let result = await searchWithYtDlp(query);
+
+        // If the full "Title Artist" query returns nothing (YouTube bot-detection
+        // or an obscure combination), retry with just the title.
+        if (!result?.id) {
+          result = await searchWithYtDlp(song.title);
+        }
+
         if (!result?.id) {
           throw new Error(`Could not find a YouTube match for: ${song.title}`);
         }
@@ -764,7 +771,14 @@ export default class {
     }
 
     if (newState.status === AudioPlayerStatus.Idle && this.status === STATUS.PLAYING) {
-      await this.forward(1);
+      try {
+        await this.forward(1);
+      } catch (error: unknown) {
+        // A failed search or stream error should skip to the next song,
+        // not crash the process with an unhandled async rejection.
+        debug(`Error advancing queue: ${String(error)}`);
+      }
+
       // Auto announce the next song if configured to
       const settings = await getGuildSettings(this.guildId);
       const {autoAnnounceNextSong} = settings;
