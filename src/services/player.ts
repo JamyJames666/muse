@@ -22,7 +22,7 @@ import FileCacheProvider from './file-cache.js';
 import debug from '../utils/debug.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {buildPlayingMessageEmbed} from '../utils/build-embed.js';
-import {getYouTubeMediaSource, createYtDlpAudioStream, searchWithYtDlp} from '../utils/yt-dlp.js';
+import {getYouTubeMediaSource, createYtDlpAudioStream, searchYouTube} from '../utils/yt-dlp.js';
 import {Setting} from '@prisma/client';
 
 export enum MediaSource {
@@ -619,13 +619,8 @@ export default class {
       // Resolve ytsearch1: queries to a real YouTube video ID first so errors surface properly
       if (song.url.startsWith('ytsearch1:')) {
         const query = song.url.slice('ytsearch1:'.length);
-        let result = await searchWithYtDlp(query);
-
-        // If the full "Title Artist" query returns nothing (YouTube bot-detection
-        // or an obscure combination), retry with just the title.
-        if (!result?.id) {
-          result = await searchWithYtDlp(song.title);
-        }
+        // Try yt-dlp search, then title-only, then @distube/ytsr as final fallback
+        const result = await searchYouTube(query, song.title);
 
         if (!result?.id) {
           throw new Error(`Could not find a YouTube match for: ${song.title}`);

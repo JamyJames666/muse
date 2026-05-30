@@ -431,3 +431,63 @@ export const searchWithYtDlp = async (query: string): Promise<YtDlpSearchResult 
     return null;
   }
 };
+
+interface YtsrVideo {
+  type: string;
+  id: string;
+  name?: string;
+  author?: {name?: string};
+  duration?: string | null;
+  isLive?: boolean;
+  thumbnail?: string;
+}
+
+const parseDurationString = (d: string | null | undefined): number => {
+  if (!d) {
+    return 0;
+  }
+
+  const parts = d.split(':').map(Number);
+  if (parts.length === 3) {
+    return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+  }
+
+  if (parts.length === 2) {
+    return (parts[0] * 60) + parts[1];
+  }
+
+  return parts[0] ?? 0;
+};
+
+// Search using @distube/ytsr as a fallback when yt-dlp search returns nothing.
+// ytsr uses a different code path and is unaffected by yt-dlp bot-detection issues.
+const searchWithYtsr = async (query: string): Promise<YtDlpSearchResult | null> => {
+  try {
+    const {default: ytsr} = await import('@distube/ytsr') as {default: (q: string, o: {limit: number}) => Promise<{items: YtsrVideo[]}>};
+    const results = await ytsr(query, {limit: 5});
+    const video = results.items.find(i => i.type === 'video');
+    if (!video) {
+      return null;
+    }
+
+    return {
+      id: video.id,
+      title: video.name ?? '',
+      uploader: video.author?.name ?? '',
+      duration: parseDurationString(video.duration),
+      thumbnail: video.thumbnail ?? '',
+      is_live: video.isLive ?? false,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const searchYouTube = async (query: string, titleFallback?: string): Promise<YtDlpSearchResult | null> => {
+  const result
+    = (await searchWithYtDlp(query))
+    ?? (titleFallback ? await searchWithYtDlp(titleFallback) : null)
+    ?? (await searchWithYtsr(query))
+    ?? (titleFallback ? await searchWithYtsr(titleFallback) : null);
+  return result;
+};
