@@ -6,6 +6,7 @@ import path from 'path';
 const YT_DLP_VERSION_TIMEOUT_MS = 15_000;
 const YT_DLP_UPDATE_TIMEOUT_MS = 120_000;
 const YT_DLP_EXTRACT_TIMEOUT_MS = 45_000;
+const YT_DLP_SEARCH_TIMEOUT_MS = 8_000;
 
 interface YtDlpMediaDownload {
   readonly url?: string;
@@ -422,7 +423,7 @@ export const searchWithYtDlp = async (query: string): Promise<YtDlpSearchResult 
       '--no-cache-dir',
       `ytsearch1:${query}`,
     ], {
-      timeout: YT_DLP_EXTRACT_TIMEOUT_MS,
+      timeout: YT_DLP_SEARCH_TIMEOUT_MS,
     });
 
     const raw = JSON.parse(stdout) as YtDlpRawSearchResult;
@@ -484,10 +485,12 @@ const searchWithYtsr = async (query: string): Promise<YtDlpSearchResult | null> 
 };
 
 export const searchYouTube = async (query: string, titleFallback?: string): Promise<YtDlpSearchResult | null> => {
+  // Ytsr is tried first — it is faster and not affected by YouTube bot-detection.
+  // Yt-dlp is kept as a fallback with a short timeout so it does not block.
   const result
-    = (await searchWithYtDlp(query))
-    ?? (titleFallback ? await searchWithYtDlp(titleFallback) : null)
-    ?? (await searchWithYtsr(query))
-    ?? (titleFallback ? await searchWithYtsr(titleFallback) : null);
+    = (await searchWithYtsr(query))
+    ?? (titleFallback ? await searchWithYtsr(titleFallback) : null)
+    ?? (await searchWithYtDlp(query))
+    ?? (titleFallback ? await searchWithYtDlp(titleFallback) : null);
   return result;
 };
