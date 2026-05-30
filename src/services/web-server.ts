@@ -303,9 +303,11 @@ export default class WebServer {
         if (!player.voiceConnection && targetChannelId) {
           const channel = guild.channels.cache.get(targetChannelId) as VoiceChannel;
           await player.connect(channel);
-          await player.play();
+          // If the first song fails to play, player.play() throws but has
+          // already forwarded to the next song — don't surface that as an error.
+          await player.play().catch(() => { /* handled internally; queue auto-advances */ });
         } else if (player.status === STATUS.IDLE) {
-          await player.play();
+          await player.play().catch(() => { /* handled internally; queue auto-advances */ });
         }
 
         // Announce to Discord that the web dashboard added songs

@@ -282,6 +282,13 @@ export default class {
         return;
       }
 
+      // Forward() only attempts to play when status !== PAUSED.
+      // If no song has ever played, status is still the initial PAUSED,
+      // which would send forward() to the idle path instead of playing.
+      if (this.status !== STATUS.PLAYING) {
+        this.status = STATUS.IDLE;
+      }
+
       await this.forward(1);
 
       if ((error as {statusCode: number}).statusCode === 410 && currentSong) {
