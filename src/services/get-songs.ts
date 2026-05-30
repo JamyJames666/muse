@@ -183,6 +183,7 @@ export default class {
       playlist: playlist ?? null,
       isLive: false,
       thumbnailUrl: track.thumbnailUrl,
+      spotifyUri: track.spotifyUri,
     }));
     return [songs, 0, tracks.length];
   }

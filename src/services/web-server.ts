@@ -1,4 +1,4 @@
-import {inject, injectable} from 'inversify';
+import {inject, injectable, optional} from 'inversify';
 import {createServer} from 'http';
 import express from 'express';
 import crypto from 'crypto';
@@ -12,6 +12,7 @@ import GetSongs from './get-songs.js';
 import {STATUS} from './player.js';
 import {getGuildSettings} from '../utils/get-guild-settings.js';
 import {prisma} from '../utils/db.js';
+import SpotifyApi from './spotify-api.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -128,18 +129,22 @@ export default class WebServer {
   private readonly playerManager: PlayerManager;
   private readonly client: Client;
   private readonly getSongs: GetSongs;
+  private readonly spotifyApi?: SpotifyApi;
 
+  // eslint-disable-next-line max-params
   constructor(
     @inject(TYPES.Config) config: Config,
     @inject(TYPES.Managers.Player) playerManager: PlayerManager,
     @inject(TYPES.Client) client: Client,
     @inject(TYPES.Services.GetSongs) getSongs: GetSongs,
+    @inject(TYPES.Services.SpotifyAPI) @optional() spotifyApi?: SpotifyApi,
   ) {
     this.password = config.WEB_PASSWORD;
     this.port = config.WEB_PORT;
     this.playerManager = playerManager;
     this.client = client;
     this.getSongs = getSongs;
+    this.spotifyApi = spotifyApi;
   }
 
   start(): void {
@@ -329,6 +334,7 @@ export default class WebServer {
             thumbnailUrl: current.thumbnailUrl,
             url: current.url,
             source: songSourceLabel(current),
+            spotifyUri: current.spotifyUri,
           }
           : null,
         position: player.getPosition(),
@@ -339,6 +345,7 @@ export default class WebServer {
           thumbnailUrl: s.thumbnailUrl,
           url: s.url,
           source: songSourceLabel(s),
+          spotifyUri: s.spotifyUri,
         })),
         volume: player.getVolume(),
         speed: player.getSpeed(),
@@ -477,6 +484,34 @@ export default class WebServer {
         res.json({ok: true, speed: player.getSpeed()});
       } catch (e: unknown) {
         res.status(400).json({error: (e as Error).message});
+      }
+    });
+
+    // Accepts a list of Spotify track URIs (spotify:track:ID), returns
+    // { [uri]: thumbnailUrl } for any that resolve. Used by the frontend
+    // to lazy-load album art after the queue is already rendered.
+    this.app.post('/api/thumbnails', auth, async (req: express.Request, res: express.Response) => {
+      const {uris} = req.body as {uris?: string[]};
+      if (!this.spotifyApi || !Array.isArray(uris) || uris.length === 0) {
+        res.json({});
+        return;
+      }
+
+      const ids = uris.map(u => u.split(':')[2]).filter(Boolean);
+      try {
+        const map = await this.spotifyApi.getThumbnails(ids);
+        const result: Record<string, string> = {};
+        for (const uri of uris) {
+          const id = uri.split(':')[2];
+          const thumb = id ? map.get(id) : undefined;
+          if (thumb) {
+            result[uri] = thumb;
+          }
+        }
+
+        res.json(result);
+      } catch {
+        res.json({});
       }
     });
 

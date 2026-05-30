@@ -45,6 +45,7 @@ export interface SongMetadata {
   isLive: boolean;
   thumbnailUrl: string | null;
   source: MediaSource;
+  spotifyUri?: string;
 }
 export interface QueuedSong extends SongMetadata {
   addedInChannelId: Snowflake;

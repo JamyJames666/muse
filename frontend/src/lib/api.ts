@@ -10,6 +10,7 @@ export interface TrackInfo {
   thumbnailUrl: string | null
   url:          string
   source?:      'youtube' | 'spotify'
+  spotifyUri?:  string
 }
 
 export interface PlayerStatus {
@@ -102,3 +103,7 @@ export const seek     = (t: string, guildId: string, position: number) =>
   req('POST', `/api/guilds/${guildId}/seek`, t, { position })
 export const setSpeed = (t: string, guildId: string, speed: number) =>
   req('POST', `/api/guilds/${guildId}/speed`, t, { speed })
+
+// Returns { [spotifyUri]: thumbnailUrl } for the given list of Spotify track URIs
+export const getSpotifyThumbnails = (t: string, uris: string[]) =>
+  req<Record<string, string>>('POST', '/api/thumbnails', t, { uris })

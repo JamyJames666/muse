@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Music2, ChevronDown } from 'lucide-react'
 import {
-  getGuilds, getChannels, getStatus,
+  getGuilds, getChannels, getStatus, getSpotifyThumbnails,
   ApiError,
-  type Guild, type Channel, type PlayerStatus,
+  type Guild, type Channel, type PlayerStatus, type TrackInfo,
 } from '@/lib/api'
 import NowPlaying from './NowPlaying'
 import QueueCard from './QueueCard'
@@ -22,6 +22,10 @@ export default function Dashboard({ token, onSessionExpired, onReconnecting }: P
   const [guildId,   setGuildId]   = useState<string>(() => localStorage.getItem('muse_guild') ?? '')
   const [channelId, setChannelId] = useState<string>('')
   const [status,    setStatus]    = useState<PlayerStatus | null>(null)
+
+  // uri → thumbnailUrl, populated lazily after queue renders
+  const [thumbCache, setThumbCache] = useState<Map<string, string>>(new Map())
+  const fetchingUris = useRef<Set<string>>(new Set())
 
   // ── Load guilds on mount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -77,10 +81,50 @@ export default function Dashboard({ token, onSessionExpired, onReconnecting }: P
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [poll])
 
+  // ── Lazy-fetch Spotify thumbnails whenever status changes ─────────────────
+  useEffect(() => {
+    if (!status) return
+    const items = [...status.queue, ...(status.nowPlaying ? [status.nowPlaying] : [])]
+    const missing = items
+      .map(t => t.spotifyUri)
+      .filter((uri): uri is string =>
+        typeof uri === 'string' &&
+        !thumbCache.has(uri) &&
+        !fetchingUris.current.has(uri),
+      )
+
+    if (missing.length === 0) return
+
+    for (const uri of missing) fetchingUris.current.add(uri)
+
+    getSpotifyThumbnails(token, missing)
+      .then(map => {
+        setThumbCache(prev => {
+          const next = new Map(prev)
+          for (const [uri, url] of Object.entries(map)) next.set(uri, url)
+          return next
+        })
+      })
+      .catch(() => null)
+      .finally(() => {
+        for (const uri of missing) fetchingUris.current.delete(uri)
+      })
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Enrich a track with its cached thumbnail if it has no thumbnail yet
+  const enrich = (item: TrackInfo): TrackInfo => ({
+    ...item,
+    thumbnailUrl: item.thumbnailUrl ?? (item.spotifyUri ? (thumbCache.get(item.spotifyUri) ?? null) : null),
+  })
+
+  const enrichedQueue      = (status?.queue ?? []).map(enrich)
+  const enrichedNowPlaying = status?.nowPlaying ? enrich(status.nowPlaying) : null
+
   // ── Guild change ─────────────────────────────────────────────────────────────
   const handleGuildChange = (id: string) => {
     setGuildId(id)
     setStatus(null)
+    setThumbCache(new Map())
     localStorage.setItem('muse_guild', id)
   }
 
@@ -131,7 +175,7 @@ export default function Dashboard({ token, onSessionExpired, onReconnecting }: P
           {/* Left column */}
           <div className="flex flex-col gap-6">
             <NowPlaying
-              status={status}
+              status={status ? { ...status, nowPlaying: enrichedNowPlaying } : null}
               token={token}
               guildId={guildId}
               onRefresh={poll}
@@ -152,7 +196,7 @@ export default function Dashboard({ token, onSessionExpired, onReconnecting }: P
 
           {/* Right column — queue */}
           <QueueCard
-            queue={status?.queue ?? []}
+            queue={enrichedQueue}
             token={token}
             guildId={guildId}
             onRefresh={poll}

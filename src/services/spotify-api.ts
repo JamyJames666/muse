@@ -13,6 +13,7 @@ export interface SpotifyTrack {
   artist: string;
   durationSeconds: number;
   thumbnailUrl: string | null;
+  spotifyUri?: string;
 }
 
 @injectable()
@@ -100,6 +101,29 @@ export default class {
     );
   }
 
+  async getThumbnails(trackIds: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (trackIds.length === 0) {
+      return map;
+    }
+
+    const batches = Array.from({length: Math.ceil(trackIds.length / 50)}, (_, i) =>
+      trackIds.slice((i * 50), (i * 50) + 50),
+    );
+    const results = await Promise.allSettled(batches.map(async b => this.spotify.getTracks(b)));
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        for (const track of r.value.body.tracks) {
+          if (track?.album?.images?.[0]?.url) {
+            map.set(track.id, track.album.images[0].url);
+          }
+        }
+      }
+    }
+
+    return map;
+  }
+
   private async getPlaylistViaUrlInfo(url: string, playlistLimit: number): Promise<[SpotifyTrack[], QueuedPlaylist]> {
     // The package's default export is declared as an interface (type-only in TS)
     // but at runtime it is a callable factory function.
@@ -119,30 +143,15 @@ export default class {
       throw new Error('No playable tracks found in this Spotify playlist. It may be private or empty.');
     }
 
-    // Batch-fetch album thumbnails from the Spotify Web API (50 per request).
-    // getTracks works with Client Credentials even when getPlaylist returns 403.
-    // All batches fire in parallel; individual failures leave thumbnailUrl as null.
-    const trackIds = rawTracks.map(t => t.uri?.split(':')[2]).filter((id): id is string => Boolean(id));
-    const batches = Array.from({length: Math.ceil(trackIds.length / 50)}, (_, i) =>
-      trackIds.slice((i * 50), (i * 50) + 50),
-    );
-    const thumbnailMap = new Map<string, string>();
-    const batchResults = await Promise.allSettled(batches.map(async batch => this.spotify.getTracks(batch)));
-    for (const result of batchResults) {
-      if (result.status === 'fulfilled') {
-        for (const track of result.value.body.tracks) {
-          if (track?.album?.images?.[0]?.url) {
-            thumbnailMap.set(track.id, track.album.images[0].url);
-          }
-        }
-      }
-    }
-
+    // Songs are returned immediately with thumbnailUrl: null.
+    // Each track carries spotifyUri so the frontend can fetch thumbnails
+    // lazily via POST /api/thumbnails after the queue is rendered.
     const tracks: SpotifyTrack[] = rawTracks.map(t => ({
       name: t.name,
       artist: t.artist ?? '',
       durationSeconds: Math.round((t.duration ?? 0) / 1000),
-      thumbnailUrl: thumbnailMap.get(t.uri?.split(':')[2] ?? '') ?? null,
+      thumbnailUrl: null,
+      spotifyUri: t.uri,
     }));
 
     const playlist = {
